@@ -1,3 +1,10 @@
+# OUR STUFF
+
+# Compiled binary for the Go web server.
+wiigo 
+
+
+
 # Prerequisites
 *.d
 
@@ -43,7 +50,6 @@
 *.pdb
 
 # Kernel Module Compile Results
-*.mod*
 *.cmd
 .tmp_versions/
 modules.order
