@@ -78,10 +78,8 @@ function draw(): void {
     }
   }
 
-  // roll to rotation in radians, and size scale
-  const rot = ((clamp(state.roll ?? 0, -180, 180) * Math.PI) / 180) || 0;
-  const baseR = 30;
-  const r = baseR + (Math.abs(clamp(state.roll ?? 0, -180, 180)) / 180) * 40;
+
+  const radius = 50;
 
   // Draw the containment rectangle so users can see the allowed area
   ctx.save();
@@ -92,26 +90,35 @@ function draw(): void {
   ctx.setLineDash([]);
   ctx.restore();
 
-  // Map yaw/pitch (-180..180) to normalized 0..1 inside the rectangle
-  const nx = (clamp(state.yaw ?? 0, -180, 180) + 180) / 360;
-  const ny = (clamp(state.pitch ?? 0, -180, 180) + 180) / 360;
+  // Map pitch (-90..90) to normalized 0..1 inside the rectangle.
+  //
+  // 90 degrees - all the way to the left
+  // -90 degrees - all the way to the right
+  const nx = 1 - (clamp(state.pitch ?? 0, -90, 90) + 90) / 180;
+
+  // Map roll (-180..180) to normalized 0..1 inside the rectangle.
+  // const ny = (clamp(state.roll ?? 0, -180, 180) + 180) / 360;
+  const ny = 0.5; // Lock ny for testing.
+
 
   // Position inside rectangle and clamp so the dot stays fully inside
   let x = rectX + nx * rectW;
   let y = rectY + ny * rectH;
-  x = clamp(x, rectX + r, rectX + rectW - r);
-  y = clamp(y, rectY + r, rectY + rectH - r);
+  x = clamp(x, rectX + radius, rectX + rectW - radius);
+  y = clamp(y, rectY + radius, rectY + rectH - radius);
+
+
 
   ctx.save();
   ctx.translate(x, y);
-  ctx.rotate(rot);
-  ctx.beginPath(); ctx.fillStyle = 'red'; ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.fillStyle = 'red'; ctx.arc(0, 0, radius, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
   info.textContent = 'pitch:' + (state.pitch ?? 0).toFixed(2) +
     ' yaw:' + (state.yaw ?? 0).toFixed(2) +
-    ' roll:' + (state.roll ?? 0).toFixed(2) +
-    ' a:' + !!state.a + ' b:' + !!state.b + ' 1:' + !!state['1'] + ' 2:' + !!state['2'];
+    ' roll:' + (state.roll ?? 0).toFixed(2);
+  // ' a:' + !!state.a + ' b:' + !!state.b + ' 1:' + !!state['1'] + ' 2:' + !!state['2'] +
+  // ' x:' + x.toFixed(2) + ' y:' + y.toFixed(2) + ' nx:' + nx.toFixed(2) + ' ny:' + ny.toFixed(2);
 
   // update buttons
   btnA.classList.toggle('on', !!state.a);
@@ -163,6 +170,10 @@ function connectPoll(): void {
   fetch('/state').then(r => r.json()).then((s: WiiState) => { state = s; info.textContent = 'Polling /state'; }).catch(() => { });
   pollTimer = setInterval(() => { fetch('/state').then(r => r.json()).then((s: WiiState) => state = s).catch(() => { }); }, 100) as unknown as number;
 }
+
+/*
+  TODO: Reconnect to the WebSocket endpoint instead of attempting to poll. 
+*/
 
 try {
   connectWS();
