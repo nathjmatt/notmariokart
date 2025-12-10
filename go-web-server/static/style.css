@@ -1,7 +1,67 @@
-html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial}
-canvas{display:block;background:#111}
-#ui{position:absolute;left:8px;top:8px;z-index:10}
-#info{color:#eee;background:rgba(0,0,0,0.4);padding:6px 8px;border-radius:6px;margin-bottom:6px}
-#buttons{display:flex;gap:6px}
-.btn{width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:#ddd;box-shadow:inset 0 -2px 0 rgba(0,0,0,0.4);transition:all 120ms ease}
-.btn.on{background:linear-gradient(180deg,#ffd6d6,#ff6b6b);color:#111;transform:translateY(-2px);box-shadow:0 4px 12px rgba(255,80,80,0.25)}
+html,
+body {
+    height: 100%;
+    margin: 0;
+    font-family: system-ui, Segoe UI, Roboto, Helvetica, Arial
+}
+
+canvas {
+    display: block;
+    background: #111;
+    /* Keep canvas full-bleed but give a subtle outline for contrast */
+    box-sizing: border-box;
+    outline: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+#ui {
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    z-index: 10
+}
+
+#info {
+    color: #eee;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    line-height: 1.2;
+    min-width: 160px;
+    -webkit-font-smoothing: antialiased;
+    font-size: 32px;
+    padding: 12px 14px;
+}
+
+#buttons {
+    display: flex;
+    gap: 6px
+}
+
+.btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #eee;
+    box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.45);
+    transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    font-weight: 600;
+    font-size: 18px;
+}
+
+.btn.on {
+    /* Light Wii-like blue when active */
+    background: linear-gradient(180deg, #cfeeff, #66b3ff);
+    color: #022;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(60, 150, 255, 0.22);
+}
+
+/* Provide a stronger pressed/touch feel */
+.btn:active {
+    transform: translateY(0) scale(0.99);
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,6 +10,23 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+)
+
+var (
+	_upgrader = websocket.Upgrader{
+		CheckOrigin:    func(r *http.Request) bool { return true },
+		ReadBufferSize: 4096,
+	}
+	_writeTimeout = 1 * time.Second
+
+	_addr = flag.String("addr", ":8080", "http service address")
+)
+
+// Global _latestState state (mutex-protected)
+var (
+	_latestStateMu sync.Mutex
+	_latestState   = State{}
+	_hub           = newHub()
 )
 
 // State represents a single input frame from the Wii-like device.
@@ -22,20 +40,6 @@ type State struct {
 	Two   bool    `json:"2"`
 	Ts    int64   `json:"ts,omitempty"`
 }
-
-var (
-	_upgrader = websocket.Upgrader{
-		CheckOrigin:    func(r *http.Request) bool { return true },
-		ReadBufferSize: 1024,
-	}
-)
-
-// Global _latest state (mutex-protected)
-var (
-	_latestMu sync.Mutex
-	_latest   = State{}
-	_h        = newHub()
-)
 
 // hub broadcasts JSON messages to all connected display clients.
 type hub struct {
@@ -78,6 +82,7 @@ func (h *hub) register(c *client) {
 	h.mu.Lock()
 	h.clients[c] = struct{}{}
 	h.mu.Unlock()
+	log.Printf("DEBUG: registered client %v_%v\n", c, c.conn.RemoteAddr())
 }
 
 func (h *hub) unregister(c *client) {
@@ -85,16 +90,17 @@ func (h *hub) unregister(c *client) {
 	if _, ok := h.clients[c]; ok {
 		delete(h.clients, c)
 		close(c.send)
+		c.conn.Close()
+		log.Printf("DEBUG: unregistered client %v_%v\n", c, c.conn.RemoteAddr())
 	}
 	h.mu.Unlock()
-	c.conn.Close()
 }
 
 func setLatest(s State) {
 	s.Ts = time.Now().UnixMilli()
-	_latestMu.Lock()
-	_latest = s
-	_latestMu.Unlock()
+	_latestStateMu.Lock()
+	_latestState = s
+	_latestStateMu.Unlock()
 
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -103,22 +109,21 @@ func setLatest(s State) {
 	}
 
 	select {
-	case _h.broadcast <- b:
+	case _hub.broadcast <- b:
 	default:
 		log.Printf("WARNING: setLatest: broadcast channel full, dropping update\n")
 	}
 }
 
 func getLatest() State {
-	_latestMu.Lock()
-	s := _latest
-	_latestMu.Unlock()
+	_latestStateMu.Lock()
+	s := _latestState
+	_latestStateMu.Unlock()
 	return s
 }
 
 // POST /wii accepts JSON body and updates state
 func handlerWiiPost(w http.ResponseWriter, r *http.Request) {
-
 	var s State
 	if r.Body == nil {
 		http.Error(w, "empty body", http.StatusBadRequest)
@@ -141,8 +146,7 @@ func handlerWiiPost(w http.ResponseWriter, r *http.Request) {
 func handlerState(w http.ResponseWriter, r *http.Request) {
 	s := getLatest()
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(s)
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(s); err != nil {
 		log.Printf("ERROR: handlerState: could not encode json: %v\n", err)
 	}
 }
@@ -159,15 +163,15 @@ func handlerWS(w http.ResponseWriter, r *http.Request) {
 		send: make(chan []byte, 8),
 	}
 
-	_h.register(c)
+	_hub.register(c)
 
 	// Send current state immediately
 	if b, err := json.Marshal(getLatest()); err == nil {
 		c.send <- b
 	}
 
-	go writePump(_h, c)
-	readPump(_h, c) // readPump blocks until connection closed
+	go writePump(_hub, c)
+	readPump(_hub, c) // readPump blocks until connection closed
 }
 
 // writePump writes messages to the Websocket connection of a singular client.
@@ -175,7 +179,7 @@ func writePump(h *hub, c *client) {
 	defer h.unregister(c)
 
 	for msg := range c.send {
-		if err := c.conn.SetWriteDeadline(time.Now().Add(1 * time.Second)); err != nil {
+		if err := c.conn.SetWriteDeadline(time.Now().Add(_writeTimeout)); err != nil {
 			log.Printf("ERROR: writePump setWriteDeadline: %v\n", err)
 			return
 		}
@@ -197,20 +201,21 @@ func readPump(h *hub, c *client) {
 
 	for {
 		messageType, _, err := c.conn.ReadMessage()
-		if err != nil {
-			log.Printf("ERROR: readPump: could not read message: %v\n", err)
-			break
-		}
 
 		switch messageType {
 
 		// Leave the loop on close message.
-		case websocket.CloseMessage:
-			break
+		// On these types of message, err will not be nil, so we skip logging.
+		case websocket.CloseMessage, websocket.CloseMessageTooBig:
+			return
 
 		// Don't do anything else with other message types for now.
 		default:
-			log.Printf("DEBUG: readPump: ignoring message type %d\n", messageType)
+			log.Printf("TRACE: readPump: ignoring message type %d\n", messageType)
+			if err != nil {
+				log.Printf("ERROR: readPump: could not read message: %v\n", err)
+				return
+			}
 		}
 	}
 
@@ -241,7 +246,7 @@ func handlerWsInput(w http.ResponseWriter, r *http.Request) {
 			}
 			setLatest(s)
 
-		case websocket.CloseMessage:
+		case websocket.CloseMessage, websocket.CloseMessageTooBig:
 			log.Printf("DEBUG: handlerWsInput: received close message\n")
 			return
 
@@ -258,6 +263,8 @@ func rootHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	flag.Parse()
+
 	/*
 	 - /wii - HTTP POST
 	 - /ws-input - WebSocket
@@ -273,8 +280,6 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", fs))
 	http.HandleFunc("/", rootHandler)
 
-	// TODO: Make this configurable from the command line.
-	addr := ":8080"
-	fmt.Println("Server listening on", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	fmt.Printf("Server listening on: %s\n", *_addr)
+	log.Fatal(http.ListenAndServe(*_addr, nil))
 }
