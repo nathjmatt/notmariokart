@@ -9,6 +9,7 @@ interface WiiState {
 }
 
 const canvas = document.getElementById('c') as HTMLCanvasElement;
+const connectionStatus = document.getElementById('connectionStatus') as HTMLDivElement;
 const info = document.getElementById('info') as HTMLDivElement;
 const ui = document.getElementById('ui') as HTMLDivElement | null;
 const btnA = document.getElementById('btnA') as HTMLDivElement;
@@ -129,7 +130,7 @@ function connectWS(): void {
   ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
 
   ws.onopen = () => {
-    info.textContent = 'Connected via WebSocket';
+    connectionStatus.textContent = 'Connected via WebSocket';
     console.debug('WebSocket connection established');
   };
 
@@ -143,7 +144,7 @@ function connectWS(): void {
   };
 
   ws.onclose = () => {
-    info.textContent = 'WebSocket closed, falling back to polling';
+    connectionStatus.textContent = 'WebSocket closed, falling back to polling';
     console.debug('WebSocket connection closed, switching to polling.');
     setTimeout(connectPoll, 500);
   };
@@ -151,8 +152,8 @@ function connectWS(): void {
   ws.onerror = () => {
     ws?.close();
     console.error("WebSocket error occurred, closing connection.");
+    connectionStatus.textContent = 'WebSocket error, falling back to polling';
   };
-
 }
 
 // Polling fallback

@@ -23,6 +23,8 @@ var (
 )
 
 // Global _latestState state (mutex-protected)
+//
+// I wouldn't do this in a production system, but for a simple demo it's fine.
 var (
 	_latestStateMu sync.Mutex
 	_latestState   = State{}
@@ -90,6 +92,7 @@ func (h *hub) unregister(c *client) {
 	if _, ok := h.clients[c]; ok {
 		delete(h.clients, c)
 		close(c.send)
+		_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 		c.conn.Close()
 		log.Printf("DEBUG: unregistered client %v_%v\n", c, c.conn.RemoteAddr())
 	}
@@ -201,6 +204,13 @@ func readPump(h *hub, c *client) {
 
 	for {
 		messageType, _, err := c.conn.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("ERROR: readPump: unexpected close: %v\n", err)
+			}
+			log.Printf("TRACE: readPump: connection closed: %v\n", err)
+			break
+		}
 
 		switch messageType {
 
@@ -212,10 +222,6 @@ func readPump(h *hub, c *client) {
 		// Don't do anything else with other message types for now.
 		default:
 			log.Printf("TRACE: readPump: ignoring message type %d\n", messageType)
-			if err != nil {
-				log.Printf("ERROR: readPump: could not read message: %v\n", err)
-				return
-			}
 		}
 	}
 
