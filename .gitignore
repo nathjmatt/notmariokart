@@ -2,7 +2,7 @@
 
 # Compiled binary for the Go web server.
 wiigo 
-
+node_modules/
 
 
 # Prerequisites
