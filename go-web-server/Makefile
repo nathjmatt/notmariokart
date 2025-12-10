@@ -13,4 +13,9 @@ build: buildt buildgo
 run:
 	./wiigo
 
-all: build run
+clean:
+	rm -f wiigo
+	rm -f ./static/app.js
+	rm -f ./static/app.js.map
+
+all: clean build run
