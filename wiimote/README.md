@@ -3,68 +3,131 @@
 A library for interfacing with Nintendo Wii Remote controllers via Bluetooth and
 forwarding the data on via HTTP POST with JSON payloads.
 
-## Build Instructions
+## Platforms and Dependencies
 
-### Prerequisites
+Wiimote currently operates on Linux, Windows, and Mac. You will need:
 
-- CMake >= 3.10
-- libcurl-devel
-- wiiuse library installed to a known location
-    - Install the `wiiuse` library with the following CMake flags:
-        - `DBUILD_EXAMPLE_SDL=NO` to not build the SDL example.
-        - `DBUILD_EXAMPLE=NO` to not build the example.
-        - `DINSTALL_EXAMPLES=NO` to not install the examples.
-        - **IMPORTANT** --> `DBUILD_SHARED_LIBS=ON` to ensure a dynamically linked library is built.  
+### Linux
+- The kernel must support Bluetooth.
+- The BlueZ Bluetooth drivers must be installed.
+- If compiling you'll need the BlueZ dev files (Ubuntu package `libbluetooth-dev`)
 
-    - Example when building wiiuse from the root of the directory:
-        1. `mkdir build`
-        2. `cd build`
-        3. `cmake .. -DBUILD_SHARED_LIBS=ON -DBUILD_EXAMPLE_SDL=NO -DBUILD_EXAMPLE=NO -DINSTALL_EXAMPLES=NO`
-        4. `sudo make install`
+### Windows
 
-### Building
+- Bluetooth driver
+- Windows SDK (with Visual Studio Community 2017+, this is very easy to build now.)
 
-1. Create a build directory:
-```bash
-mkdir build && cd build
+### Mac
+
+- Mac OS X 10.2 or newer
+
+### All Platforms
+
+- If compiling:
+    - [CMake](https://cmake.org) is needed.
+    - [Wiiuse library](https://github.com/wiiuse/wiiuse)
+    - [CURL Development Libraries](https://curl.se/)
+
+#### Installing wiiuse Library
+
+##### Linux and Mac 
+
+1. Clone the repo
+```
+git clone https://github.com/wiiuse/wiiuse.git
 ```
 
-2. Configure the project:
-```bash
+2. Configure CMake to ensure that the `wiiuse` library is dynamically linked. 
+```
+mkdir build
+cd build
+cmake .. cmake .. -DBUILD_SHARED_LIBS=ON -DBUILD_EXAMPLE_SDL=NO -DBUILD_EXAMPLE=NO -DINSTALL_EXAMPLES=NO
+```
+
+3. Install the library system-wide.
+```
+sudo make install
+```
+
+##### Windows
+
+TODO: Fill in.
+
+
+## Compiling
+
+### Linux and Mac
+
+Run the commands yourself:
+
+```
+mkdir build
+cd build
 cmake ..
+make wiimote
 ```
 
-If your wiiuse library is installed to a custom location, specify it with:
-```bash
-cmake -DWIIUSE_ROOT=/path/to/wiiuse/install ..
-```
-
-3. Build:
-```bash
-cmake --build .
-```
-
-4. (Optional) Install:
-```bash
-cmake --install .
-```
-
-## Project Structure
+OR trust my Makefile:
 
 ```
-wiimote/
-├── CMakeLists.txt          # Root CMakeLists configuration
-├── README.md               # This file
-├── .gitignore              # Git ignore rules
-├── src/
-│   └── main.c              # Main source file
-├── include/
-│   └── wiimote/            # Project-specific headers
-└── cmake/
-    └── FindWiiUse.cmake    # Custom find module for wiiuse
+make build
+make compile
 ```
 
-## Dependencies
+Execute the binary with:
+```
+./build/wiimote
+```
 
-- **libcurl**: HTTP client library (installed system-wide)
-- **wiiuse**: Wii Remote Bluetooth library (custom location supported)
+OR 
+
+```
+make execute
+```
+
+Compile and execute the binary in one step: 
+
+```
+make run
+```
+
+### Windows
+
+The CMake GUI can be used to generate a Visual Studio solution.
+
+
+### Known Issues
+
+
+Wiimote can only connect to a device if it is in discoverable mode. Enable 
+discoverable mode by pressing the button on the inside of the battery cover.
+
+
+#### Windows
+
+You must first pair the Wii remote to the operating system. 
+
+1. Open `Settings`. 
+2. Go to `Bluetooth & Devices`.
+3. Click on `Devices`. 
+4. Scroll all the way down. There should be an option 
+`More devices and printer settings` with a pop-out arrow, click it.
+5. In the window that popped up, click `Add a device`, in the upper left hand corner.
+6. Connect the Wii remote as normal. The names that the Wii remote should appear
+as are:
+- RVL-CNT-01
+- RVL-CNT-01-TR
+
+
+#### Mac
+
+Wiimote may not be able to connect to the device if it has been paired to the 
+operating system. Unpair it by:
+
+1. Click on `Apple` --> `System Preferences` --> `Bluetooth`
+2. Select the device from one of the following names:
+    - RVL-CNT-01
+    - RVL-CNT-01-TR
+3. Press the X next to the device OR right-click and select `Remove`.
+
+Enable discovery mode and try again.
