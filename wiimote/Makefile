@@ -3,11 +3,11 @@ clean:
 .PHONY: clean 
 
 build: 
-	rm -rf build && mkdir build && cd build && cmake ..
+	cmake -B build
 .PHONY: build
 
 compile:
-	cd build && make wiimote
+	cmake --build ./build
 .PHONY: compile
 
 execute: 
@@ -16,8 +16,6 @@ execute:
 
 run: compile execute
 .PHONY: run
-
-
 
 all: clean build compile
 .PHONY: all

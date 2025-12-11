@@ -36,15 +36,19 @@ Wiimote currently operates on Linux, Windows, and Mac. You will need:
 ```
 git clone https://github.com/wiiuse/wiiuse.git
 ```
+2. Change directories
+```
+cd wiiuse
+```
 
-2. Configure CMake to ensure that the `wiiuse` library is dynamically linked. 
+3. Configure CMake to ensure that the `wiiuse` library is dynamically linked. 
 ```
 mkdir build
 cd build
-cmake .. cmake .. -DBUILD_SHARED_LIBS=ON -DBUILD_EXAMPLE_SDL=NO -DBUILD_EXAMPLE=NO -DINSTALL_EXAMPLES=NO
+cmake .. -DBUILD_SHARED_LIBS=ON -DBUILD_EXAMPLE_SDL=NO -DBUILD_EXAMPLE=NO -DINSTALL_EXAMPLES=NO
 ```
 
-3. Install the library system-wide.
+4. Install the library system-wide.
 ```
 sudo make install
 ```
@@ -61,10 +65,8 @@ TODO: Fill in.
 Run the commands yourself:
 
 ```
-mkdir build
-cd build
-cmake ..
-make wiimote
+cmake -B build
+cmake --build build
 ```
 
 OR trust my Makefile:
